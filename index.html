@@ -2,44 +2,51 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Visitas Appwrite FUNCIONAL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Profesional de Visitas</title>
 <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
 <style>
-body{font-family:Arial;background:#111827;color:white;margin:0}
+body{margin:0;font-family:Arial;background:#0f172a;color:white}
 .container{max-width:900px;margin:auto;padding:20px}
-.card{background:#1f2937;padding:20px;border-radius:10px;margin-bottom:20px}
-input,button{width:100%;padding:10px;margin:5px 0;border:none;border-radius:6px}
-button{background:#22c55e;color:white;cursor:pointer}
-table{width:100%;margin-top:10px;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #374151}
+.card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px}
+input{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;background:#22c55e;color:white;cursor:pointer}
+button:hover{opacity:0.9}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:10px;border-bottom:1px solid #334155}
 </style>
 </head>
 <body>
 
 <div class="container" id="loginBox">
 <div class="card">
-<h2>Login</h2>
-<input id="email" placeholder="Correo">
-<input id="password" type="password" placeholder="Contraseña">
+<h2>🔐 Iniciar Sesión</h2>
+<input type="email" id="email" placeholder="Correo" required>
+<input type="password" id="password" placeholder="Contraseña" required>
 <button onclick="login()">Ingresar</button>
 </div>
 </div>
 
 <div class="container" id="app" style="display:none">
 <div class="card">
-<h2>Registro de Visitas</h2>
-<input id="nombre" placeholder="Nombre">
+<h2>📋 Registro de Visitas</h2>
+<input id="nombre" placeholder="Nombre del visitante">
 <input id="motivo" placeholder="Motivo">
-<button onclick="entrada()">Entrada</button>
-<button onclick="salida()">Salida</button>
-<button onclick="logout()" style="background:#ef4444">Salir</button>
+<button onclick="registrarEntrada()">Registrar Entrada</button>
+<button onclick="registrarSalida()">Registrar Salida</button>
+<button onclick="logout()" style="background:#ef4444">Cerrar sesión</button>
 </div>
 
 <div class="card">
-<h3>Historial</h3>
+<h3>📊 Historial</h3>
 <table>
 <thead>
-<tr><th>Nombre</th><th>Motivo</th><th>Entrada</th><th>Salida</th></tr>
+<tr>
+<th>Nombre</th>
+<th>Motivo</th>
+<th>Entrada</th>
+<th>Salida</th>
+</tr>
 </thead>
 <tbody id="tabla"></tbody>
 </table>
@@ -47,70 +54,131 @@ th,td{padding:8px;border-bottom:1px solid #374151}
 </div>
 
 <script>
-const client = new Appwrite.Client()
-.setEndpoint('https://cloud.appwrite.io/v1')
-.setProject('69d2d612001d83635dd3');
+// CONFIGURACIÓN SEGURA
+const client = new Appwrite.Client();
+client
+.setEndpoint('https://nyc.cloud.appwrite.io/v1')
+.setProject('69d438fc0031adffdc0d');
 
 const account = new Appwrite.Account(client);
-const db = new Appwrite.Databases(client);
+const databases = new Appwrite.Databases(client);
 
-const DB = '69d2d6bf0023f2fbbfc4';
-const COL = '69d2e01c00197a2f5645';
+const DATABASE_ID = '69d4395000137ebeb963';
+const COLLECTION_ID = 'visitdb';
 
+// LOGIN
 async function login(){
-try{
-await account.createEmailSession(
-document.getElementById('email').value,
-document.getElementById('password').value
-);
-mostrarApp();
-}catch(e){alert(e.message);console.log(e)}
+const email = document.getElementById('email').value;
+const password = document.getElementById('password').value;
+
+if(!email || !password){
+alert('Completa los campos');
+return;
 }
 
+try{
+await account.createEmailSession(email, password);
+mostrarApp();
+}catch(error){
+console.error(error);
+alert('Error: ' + error.message);
+}
+}
+
+// LOGOUT
 async function logout(){
 await account.deleteSession('current');
 location.reload();
 }
 
+// MOSTRAR APP
 function mostrarApp(){
 document.getElementById('loginBox').style.display='none';
 document.getElementById('app').style.display='block';
-cargar();
+cargarVisitas();
 }
 
-async function entrada(){
-let nombre=document.getElementById('nombre').value;
-let motivo=document.getElementById('motivo').value;
-if(!nombre||!motivo){alert('Completa');return}
+// REGISTRAR ENTRADA
+async function registrarEntrada(){
+const nombre = document.getElementById('nombre').value;
+const motivo = document.getElementById('motivo').value;
 
-await db.createDocument(DB,COL,'unique()',{
-nombre,motivo,entrada:new Date().toLocaleString(),salida:''
+if(!nombre || !motivo){
+alert('Completa los datos');
+return;
+}
+
+try{
+await databases.createDocument(DATABASE_ID, COLLECTION_ID, 'unique()', {
+nombre: nombre,
+motivo: motivo,
+entrada: new Date().toLocaleString(),
+salida: ''
 });
-cargar();
+
+cargarVisitas();
+}catch(error){
+console.error(error);
+alert('Error al guardar');
+}
 }
 
-async function salida(){
-let nombre=document.getElementById('nombre').value;
-let res=await db.listDocuments(DB,COL);
-let v=res.documents.reverse().find(x=>x.nombre==nombre && !x.salida);
-if(v){
-await db.updateDocument(DB,COL,v.$id,{salida:new Date().toLocaleString()});
-}else{alert('No encontrado')}
-cargar();
+// REGISTRAR SALIDA
+async function registrarSalida(){
+const nombre = document.getElementById('nombre').value;
+
+try{
+const res = await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
+
+const visita = res.documents.reverse().find(v => v.nombre === nombre && !v.salida);
+
+if(!visita){
+alert('No hay entrada registrada');
+return;
 }
 
-async function cargar(){
-let res=await db.listDocuments(DB,COL);
-let t=document.getElementById('tabla');
-t.innerHTML='';
-res.documents.forEach(v=>{
-t.innerHTML+=`<tr><td>${v.nombre}</td><td>${v.motivo}</td><td>${v.entrada}</td><td>${v.salida||''}</td></tr>`;
+await databases.updateDocument(DATABASE_ID, COLLECTION_ID, visita.$id, {
+salida: new Date().toLocaleString()
 });
+
+cargarVisitas();
+}catch(error){
+console.error(error);
+alert('Error al actualizar');
+}
 }
 
-async function check(){
-try{await account.get();mostrarApp()}catch(e){console.log('no login')}}
-check();
+// CARGAR VISITAS
+async function cargarVisitas(){
+try{
+const res = await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
+const tabla = document.getElementById('tabla');
+tabla.innerHTML = '';
+
+res.documents.forEach(v => {
+tabla.innerHTML += `<tr>
+<td>${v.nombre}</td>
+<td>${v.motivo}</td>
+<td>${v.entrada}</td>
+<td>${v.salida || ''}</td>
+</tr>`;
+});
+}catch(error){
+console.error(error);
+}
+}
+
+// VERIFICAR SESIÓN AUTOMÁTICA
+async function verificarSesion(){
+try{
+await account.get();
+mostrarApp();
+}catch(e){
+console.log('No hay sesión activa');
+}
+}
+
+verificarSesion();
 </script>
 
 </body>
