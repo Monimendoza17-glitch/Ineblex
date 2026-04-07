@@ -1,181 +1,188 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema Profesional de Visitas</title>
-<script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
-<style>
-body{margin:0;font-family:Arial;background:#0f172a;color:white}
-.container{max-width:900px;margin:auto;padding:20px}
-.card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px}
-input{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:none}
-button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;background:#22c55e;color:white;cursor:pointer}
-button:hover{opacity:0.9}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{padding:10px;border-bottom:1px solid #334155}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Profesional de Visitas</title>
+    <!-- Cargamos la librería de Supabase -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body{margin:0;font-family:'Segoe UI',Arial;background:#0f172a;color:white}
+        .container{max-width:900px;margin:auto;padding:20px}
+        .card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1)}
+        input{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:1px solid #334155;background:#0f172a;color:white;box-sizing:border-box}
+        button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:8px;background:#22c55e;color:white;cursor:pointer;font-weight:bold}
+        button:hover{background:#16a34a}
+        table{width:100%;border-collapse:collapse;margin-top:10px}
+        th,td{padding:12px;border-bottom:1px solid #334155;text-align:left}
+        th{background:#334155}
+    </style>
 </head>
 <body>
 
+<!-- Pantalla de Login -->
 <div class="container" id="loginBox">
-<div class="card">
-<h2>🔐 Iniciar Sesión</h2>
-<input type="email" id="email" placeholder="Correo" required>
-<input type="password" id="password" placeholder="Contraseña" required>
-<button onclick="login()">Ingresar</button>
-</div>
+    <div class="card">
+        <h2>🔐 Iniciar Sesión</h2>
+        <p>Ingresa con el usuario que creaste en Supabase Auth</p>
+        <input type="email" id="email" placeholder="Correo electrónico">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button onclick="login()">INGRESAR</button>
+    </div>
 </div>
 
+<!-- Pantalla Principal de la App -->
 <div class="container" id="app" style="display:none">
-<div class="card">
-<h2>📋 Registro de Visitas</h2>
-<input id="nombre" placeholder="Nombre del visitante">
-<input id="motivo" placeholder="Motivo">
-<button onclick="registrarEntrada()">Registrar Entrada</button>
-<button onclick="registrarSalida()">Registrar Salida</button>
-<button onclick="logout()" style="background:#ef4444">Cerrar sesión</button>
-</div>
+    <div class="card">
+        <h2>📋 Registro de Visitas</h2>
+        <input id="nombre" placeholder="Nombre completo del visitante">
+        <input id="motivo" placeholder="Motivo de la visita">
+        <div style="display:flex; gap:10px">
+            <button onclick="registrarEntrada()">Registrar Entrada</button>
+            <button onclick="registrarSalida()" style="background:#3b82f6">Registrar Salida</button>
+        </div>
+        <button onclick="logout()" style="background:#ef4444; margin-top:20px">Cerrar sesión</button>
+    </div>
 
-<div class="card">
-<h3>📊 Historial</h3>
-<table>
-<thead>
-<tr>
-<th>Nombre</th>
-<th>Motivo</th>
-<th>Entrada</th>
-<th>Salida</th>
-</tr>
-</thead>
-<tbody id="tabla"></tbody>
-</table>
-</div>
+    <div class="card">
+        <h3>📊 Historial de hoy</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Visitante</th>
+                    <th>Motivo</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                </tr>
+            </thead>
+            <tbody id="tabla"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
-// CONFIGURACIÓN SEGURA
-const client = new Appwrite.Client();
-client
-.setEndpoint('https://nyc.cloud.appwrite.io/v1')
-.setProject('69d438fc0031adffdc0d');
+// 1. CONFIGURACIÓN (REEMPLAZA LA KEY)
+const SUPABASE_URL = 'https://supabase.co';
+const SUPABASE_KEY = 'TU_LLAVE_ANON_AQUÍ'; // <--- PEGA AQUÍ TU ANON PUBLIC KEY
 
-const account = new Appwrite.Account(client);
-const databases = new Appwrite.Databases(client);
+const supabase = Supabase.default.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const DATABASE_ID = '69d4395000137ebeb963';
-const COLLECTION_ID = 'visitdb';
-
-// LOGIN
+// 2. FUNCIÓN DE LOGIN
 async function login(){
-const email = document.getElementById('email').value;
-const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-if(!email || !password){
-alert('Completa los campos');
-return;
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+    });
+
+    if(error) {
+        alert("Error de acceso: " + error.message);
+    } else {
+        mostrarApp();
+    }
 }
 
-try{
-await account.createEmailSession(email, password);
-mostrarApp();
-}catch(error){
-console.error(error);
-alert('Error: ' + error.message);
-}
-}
-
-// LOGOUT
-async function logout(){
-await account.deleteSession('current');
-location.reload();
-}
-
-// MOSTRAR APP
+// 3. MOSTRAR APLICACIÓN
 function mostrarApp(){
-document.getElementById('loginBox').style.display='none';
-document.getElementById('app').style.display='block';
-cargarVisitas();
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('app').style.display='block';
+    cargarVisitas();
 }
 
-// REGISTRAR ENTRADA
+// 4. REGISTRAR ENTRADA
 async function registrarEntrada(){
-const nombre = document.getElementById('nombre').value;
-const motivo = document.getElementById('motivo').value;
+    const nombre = document.getElementById('nombre').value;
+    const motivo = document.getElementById('motivo').value;
 
-if(!nombre || !motivo){
-alert('Completa los datos');
-return;
+    if(!nombre || !motivo) return alert("Llena ambos campos");
+
+    const { error } = await supabase
+        .from('visitas')
+        .insert([{ 
+            nombre: nombre, 
+            motivo: motivo, 
+            entrada: new Date().toLocaleString(),
+            salida: '' 
+        }]);
+
+    if(error) {
+        alert("Error al guardar: " + error.message);
+    } else {
+        document.getElementById('nombre').value = '';
+        document.getElementById('motivo').value = '';
+        cargarVisitas();
+    }
 }
 
-try{
-await databases.createDocument(DATABASE_ID, COLLECTION_ID, 'unique()', {
-nombre: nombre,
-motivo: motivo,
-entrada: new Date().toLocaleString(),
-salida: ''
-});
-
-cargarVisitas();
-}catch(error){
-console.error(error);
-alert('Error al guardar');
-}
-}
-
-// REGISTRAR SALIDA
+// 5. REGISTRAR SALIDA
 async function registrarSalida(){
-const nombre = document.getElementById('nombre').value;
+    const nombre = document.getElementById('nombre').value;
+    if(!nombre) return alert("Escribe el nombre del visitante para marcar su salida");
 
-try{
-const res = await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
+    // Buscamos la última visita de esa persona que no tenga hora de salida
+    const { data, error } = await supabase
+        .from('visitas')
+        .select('*')
+        .eq('nombre', nombre)
+        .eq('salida', '')
+        .order('id', { ascending: false })
+        .limit(1);
 
-const visita = res.documents.reverse().find(v => v.nombre === nombre && !v.salida);
-
-if(!visita){
-alert('No hay entrada registrada');
-return;
+    if(data && data.length > 0) {
+        const { error: upError } = await supabase
+            .from('visitas')
+            .update({ salida: new Date().toLocaleString() })
+            .eq('id', data[0].id);
+        
+        if(!upError) {
+            alert("Salida registrada con éxito");
+            cargarVisitas();
+        }
+    } else {
+        alert("No se encontró una entrada pendiente para este nombre");
+    }
 }
 
-await databases.updateDocument(DATABASE_ID, COLLECTION_ID, visita.$id, {
-salida: new Date().toLocaleString()
-});
-
-cargarVisitas();
-}catch(error){
-console.error(error);
-alert('Error al actualizar');
-}
-}
-
-// CARGAR VISITAS
+// 6. CARGAR TABLA
 async function cargarVisitas(){
-try{
-const res = await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
-const tabla = document.getElementById('tabla');
-tabla.innerHTML = '';
+    const { data, error } = await supabase
+        .from('visitas')
+        .select('*')
+        .order('id', { ascending: false });
 
-res.documents.forEach(v => {
-tabla.innerHTML += `<tr>
-<td>${v.nombre}</td>
-<td>${v.motivo}</td>
-<td>${v.entrada}</td>
-<td>${v.salida || ''}</td>
-</tr>`;
-});
-}catch(error){
-console.error(error);
-}
+    if(error) {
+        console.error("Error cargando datos:", error);
+        return;
+    }
+
+    const tabla = document.getElementById('tabla');
+    tabla.innerHTML = '';
+
+    data.forEach(v => {
+        tabla.innerHTML += `
+            <tr>
+                <td>${v.nombre}</td>
+                <td>${v.motivo}</td>
+                <td>${v.entrada}</td>
+                <td>${v.salida ? v.salida : '<span style="color:#fbbf24">En curso...</span>'}</td>
+            </tr>`;
+    });
 }
 
-// VERIFICAR SESIÓN AUTOMÁTICA
+// 7. CERRAR SESIÓN
+async function logout(){
+    await supabase.auth.signOut();
+    location.reload();
+}
+
+// 8. VERIFICAR SESIÓN ACTIVA AL ENTRAR
 async function verificarSesion(){
-try{
-await account.get();
-mostrarApp();
-}catch(e){
-console.log('No hay sesión activa');
-}
+    const { data } = await supabase.auth.getSession();
+    if(data.session) {
+        mostrarApp();
+    }
 }
 
 verificarSesion();
@@ -183,3 +190,4 @@ verificarSesion();
 
 </body>
 </html>
+
