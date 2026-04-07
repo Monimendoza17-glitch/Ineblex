@@ -1,185 +1,157 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Visitas Profesional</title>
-    <!-- Cargamos la librería oficial de Supabase -->
-    <script src="https://jsdelivr.net"></script>
+    <title>Sistema de Visitas Local</title>
     <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; padding: 20px; }
-        .container { width: 100%; max-width: 500px; }
-        .card { background: #1e293b; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); margin-bottom: 20px; }
-        h2, h3 { margin-top: 0; text-align: center; color: #38bdf8; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #22c55e; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        button:hover { background: #16a34a; }
-        .btn-logout { background: #ef4444; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th, td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #22c55e; --error: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .card { background: var(--card); padding: 2rem; border-radius: 1rem; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #38bdf8; margin-top: 0; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        .btn-out { background: var(--error); margin-top: 20px; }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
+        th, td { padding: 12px; border-bottom: 1px solid #334155; text-align: left; }
         th { color: #94a3b8; }
+        .status { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; background: #334155; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <!-- BLOQUE DE LOGIN -->
+    <!-- SECCIÓN 1: LOGIN (Usuario: admin / Clave: 1234) -->
     <div id="login-section" class="card">
-        <h2>🔐 Acceso al Sistema</h2>
-        <input type="email" id="email" placeholder="Tu correo electrónico">
-        <input type="password" id="password" placeholder="Tu contraseña">
-        <button onclick="handleLogin()">Entrar</button>
-        <p id="login-msg" style="color: #fb7185; font-size: 13px; text-align: center;"></p>
+        <h2>🔒 Acceso al Sistema</h2>
+        <p style="text-align: center; font-size: 0.8rem; color: #94a3b8;">Usa: admin / 1234</p>
+        <input type="text" id="user" placeholder="Usuario">
+        <input type="password" id="pass" placeholder="Contraseña">
+        <button onclick="handleLogin()">Iniciar Sesión</button>
+        <div id="error-msg" style="color: var(--error); text-align: center; margin-top: 10px; font-size: 0.9rem;"></div>
     </div>
 
-    <!-- BLOQUE DE LA APP (OCULTO AL INICIO) -->
-    <div id="app-section" class="container" style="display: none;">
-        <div class="card">
-            <h3>📋 Registro de Visita</h3>
-            <input type="text" id="v-nombre" placeholder="Nombre del visitante">
-            <input type="text" id="v-motivo" placeholder="Motivo de la visita">
-            <button onclick="registrarEntrada()">Registrar Entrada</button>
-            <button onclick="registrarSalida()" style="background: #eab308;">Marcar Salida</button>
-            <button onclick="handleLogout()" class="btn-logout">Cerrar Sesión</button>
+    <!-- SECCIÓN 2: APLICACIÓN PRINCIPAL -->
+    <div id="app-section" class="card hidden" style="max-width: 800px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0;">📋 Registro de Visitas</h2>
+            <button onclick="handleLogout()" style="width: auto; padding: 5px 15px; margin: 0; background: #475569;">Salir</button>
         </div>
 
-        <div class="card" style="max-width: 100%; overflow-x: auto;">
-            <h3>📊 Historial Reciente</h3>
+        <div style="margin-top: 20px;">
+            <input type="text" id="v-nombre" placeholder="Nombre del visitante">
+            <input type="text" id="v-motivo" placeholder="Motivo de la visita">
+            <button onclick="agregarVisita()">Registrar Entrada</button>
+        </div>
+
+        <div style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
                         <th>Visitante</th>
                         <th>Entrada</th>
-                        <th>Salida</th>
+                        <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tabla-cuerpo"></tbody>
             </table>
         </div>
+        <button onclick="limpiarTodo()" class="btn-out" style="background: #334155; font-size: 0.7rem;">Limpiar Historial</button>
     </div>
-</div>
 
 <script>
-    // 1. CONFIGURACIÓN (TUS DATOS)
-    const SB_URL = 'https://supabase.co';
-    const SB_KEY = 'sb_publishable_q-li-r301rM93noTG8r2Wg_fE4vE4YR';
-    const _supabase = supabase.createClient(SB_URL, SB_KEY);
-
-    // 2. FUNCIÓN DE LOGIN
-    async function handleLogin() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const msg = document.getElementById('login-msg');
-
-        const { data, error } = await _supabase.auth.signInWithPassword({
-            email: email,
-            password: password,
-        });
-
-        if (error) {
-            msg.innerText = "Error: " + error.message;
+    // --- LÓGICA DE LOGIN ---
+    function handleLogin() {
+        const u = document.getElementById('user').value;
+        const p = document.getElementById('pass').value;
+        if(u === 'admin' && p === '1234') {
+            localStorage.setItem('sesion_visitas', 'activa');
+            mostrarApp();
         } else {
-            initApp();
+            document.getElementById('error-msg').innerText = "Usuario o clave incorrectos";
         }
     }
 
-    // 3. FUNCIÓN DE LOGOUT
-    async function handleLogout() {
-        await _supabase.auth.signOut();
+    function handleLogout() {
+        localStorage.removeItem('sesion_visitas');
         location.reload();
     }
 
-    // 4. INICIALIZAR APP
-    function initApp() {
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('app-section').style.display = 'block';
-        cargarHistorial();
+    function mostrarApp() {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        renderVisitas();
     }
 
-    // 5. REGISTRAR ENTRADA
-    async function registrarEntrada() {
+    // --- LÓGICA DE DATOS ---
+    let visitas = JSON.parse(localStorage.getItem('datos_visitas')) || [];
+
+    function agregarVisita() {
         const nombre = document.getElementById('v-nombre').value;
         const motivo = document.getElementById('v-motivo').value;
 
-        if(!nombre || !motivo) return alert("Llena todos los campos");
+        if(!nombre || !motivo) return alert("Por favor completa los campos");
 
-        const { error } = await _supabase
-            .from('visitas')
-            .insert([{ 
-                nombre: nombre, 
-                motivo: motivo, 
-                entrada: new Date().toLocaleString(), 
-                salida: '' 
-            }]);
+        const nuevaVisita = {
+            id: Date.now(),
+            nombre: nombre,
+            motivo: motivo,
+            hora: new Date().toLocaleString(),
+            salida: null
+        };
 
-        if (error) alert("Error al guardar: " + error.message);
-        else {
-            alert("¡Entrada registrada!");
-            document.getElementById('v-nombre').value = "";
-            document.getElementById('v-motivo').value = "";
-            cargarHistorial();
-        }
+        visitas.unshift(nuevaVisita);
+        guardarYRender();
+        document.getElementById('v-nombre').value = '';
+        document.getElementById('v-motivo').value = '';
     }
 
-    // 6. REGISTRAR SALIDA
-    async function registrarSalida() {
-        const nombre = document.getElementById('v-nombre').value;
-        if(!nombre) return alert("Escribe el nombre para marcar su salida");
-
-        // Buscamos la última visita de esa persona que no tenga salida
-        const { data } = await _supabase
-            .from('visitas')
-            .select('*')
-            .eq('nombre', nombre)
-            .eq('salida', '')
-            .order('id', { ascending: false })
-            .limit(1);
-
-        if (data && data.length > 0) {
-            await _supabase
-                .from('visitas')
-                .update({ salida: new Date().toLocaleString() })
-                .eq('id', data[0].id);
-            
-            alert("Salida registrada para " + nombre);
-            cargarHistorial();
-        } else {
-            alert("No hay visitas activas para este nombre");
-        }
+    function marcarSalida(id) {
+        visitas = visitas.map(v => {
+            if(v.id === id) v.salida = new Date().toLocaleTimeString();
+            return v;
+        });
+        guardarYRender();
     }
 
-    // 7. CARGAR TABLA
-    async function cargarHistorial() {
-        const { data, error } = await _supabase
-            .from('visitas')
-                .select('*')
-            .order('id', { ascending: false })
-            .limit(10);
+    function guardarYRender() {
+        localStorage.setItem('datos_visitas', JSON.stringify(visitas));
+        renderVisitas();
+    }
 
+    function renderVisitas() {
         const cuerpo = document.getElementById('tabla-cuerpo');
-        cuerpo.innerHTML = "";
+        cuerpo.innerHTML = '';
 
-        if (data) {
-            data.forEach(v => {
-                cuerpo.innerHTML += `
-                    <tr>
-                        <td><b>${v.nombre}</b><br><small>${v.motivo}</small></td>
-                        <td>${v.entrada}</td>
-                        <td>${v.salida || '<i>En curso</i>'}</td>
-                    </tr>
-                `;
-            });
+        visitas.forEach(v => {
+            cuerpo.innerHTML += `
+                <tr>
+                    <td><b>${v.nombre}</b><br><small style="color:#94a3b8">${v.motivo}</small></td>
+                    <td>${v.hora}</td>
+                    <td>
+                        ${v.salida 
+                            ? `<span class="status">Salió: ${v.salida}</span>` 
+                            : `<button onclick="marcarSalida(${v.id})" style="width:auto; padding:4px 10px; font-size:0.7rem; margin:0; background:#eab308">Salida</button>`
+                        }
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function limpiarTodo() {
+        if(confirm("¿Borrar todo el historial?")) {
+            visitas = [];
+            guardarYRender();
         }
     }
 
-    // 8. AUTO-LOGUEO (SI YA HAY SESIÓN)
-    async function checkSession() {
-        const { data } = await _supabase.auth.getSession();
-        if (data.session) initApp();
+    // --- AL CARGAR ---
+    if(localStorage.getItem('sesion_visitas') === 'activa') {
+        mostrarApp();
     }
-    checkSession();
-
 </script>
+
 </body>
 </html>
-
